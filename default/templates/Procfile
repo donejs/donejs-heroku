@@ -1,0 +1,1 @@
+web: node_modules/.bin/done-serve <% if (needsProxy) { %> --proxy <%= proxyUrl %> <% } %>
