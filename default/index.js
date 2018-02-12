@@ -2,10 +2,22 @@ var exec = require('child_process').exec;
 var Generator = require('yeoman-generator');
 
 module.exports = Generator.extend({
+  constructor: function constructor(args, opts) {
+    Generator.call(this, args, opts);
+    this.procfilePath = this.destinationPath('Procfile');
+  },
+
   initializing: function initializing() {
     var self = this;
-    var done = self.async();
+    var procfileExists = self.fs.exists(self.procfilePath);
 
+    if (procfileExists) {
+      self.abort = true;
+      self.log.error('Procfile already exists, aborting command.');
+      return;
+    }
+
+    var done = self.async();
     self
       ._checkHeroku()
       .then(function() {
@@ -19,53 +31,58 @@ module.exports = Generator.extend({
   },
 
   prompting: function prompting() {
-    var self = this;
-    var done = self.async();
-
-    self
-      .prompt([
-        {
-          type: 'confirm',
-          name: 'needsProxy',
-          message: 'Does the application require a Proxy?'
-        },
-        {
-          type: 'input',
-          name: 'proxyUrl',
-          when: function when(answers) {
-            return !!answers.needsProxy;
+    if (!this.abort) {
+      var self = this;
+      var done = self.async();
+      self
+        .prompt([
+          {
+            type: 'confirm',
+            name: 'needsProxy',
+            message: 'Does the application require a Proxy?'
           },
-          message: "What's the Proxy url?"
-        }
-      ])
-      .then(function(answers) {
-        self.data = answers;
-        done();
-      });
+          {
+            type: 'input',
+            name: 'proxyUrl',
+            when: function when(answers) {
+              return !!answers.needsProxy;
+            },
+            message: "What's the Proxy url?"
+          }
+        ])
+        .then(function(answers) {
+          self.data = answers;
+          done();
+        });
+    }
   },
 
   writing: function writing() {
-    this.log('Writing Procfile file to ' + this.destinationPath());
+    if (!this.abort) {
+      this.log('Writing Procfile file to ' + this.destinationPath());
 
-    this.fs.copyTpl(
-      this.templatePath('Procfile'),
-      this.destinationPath('Procfile'),
-      this.data
-    );
+      this.fs.copyTpl(
+        this.templatePath('Procfile'),
+        this.procfilePath,
+        this.data
+      );
+    }
   },
 
   end: function end() {
-    this.log(`
-    Make sure to commit the Procfile, e.g:
+    if (!this.abort) {
+      this.log(`
+      Make sure to commit the Procfile, e.g:
 
-      > git add -A
-      > git commit -m "Add Procfile for heroku deployments"
-      > git push origin master
+        > git add -A
+        > git commit -m "Add Procfile for heroku deployments"
+        > git push origin master
 
-    And then, push your branch to heroku to deploy the application:
+      And then, push your branch to heroku to deploy the application:
 
-      > git push heroku master
-    `);
+        > git push heroku master
+      `);
+    }
   },
 
   _checkHeroku: function checkHeroku() {

@@ -1,8 +1,28 @@
+var fs = require('fs');
 var path = require('path');
 var helpers = require('yeoman-test');
 var assert = require('yeoman-assert');
 
 describe('donejs-heroku', function() {
+  describe('with an existing Procfile', function() {
+    before(function(done) {
+      helpers
+        .run(path.join(__dirname, '../default'))
+        .inTmpDir(function(dir) {
+          fs.copyFileSync(
+            path.join(__dirname, 'procfile_fixture'),
+            path.join(dir, 'Procfile')
+          );
+        })
+        .on('end', done);
+    });
+
+    it('does not override Procfile', function() {
+      assert.file('Procfile');
+      assert.fileContent('Procfile', /bundle exec rails/);
+    });
+  });
+
   describe('without heroku CLI installed', function() {
     before(function(done) {
       helpers
