@@ -146,4 +146,43 @@ describe('donejs-heroku', function() {
       );
     });
   });
+
+  describe('with a custom heroku app name', function() {
+    var cmds = [];
+
+    before(function(done) {
+      helpers
+        .run(path.join(__dirname, '../default'))
+        .inTmpDir()
+        .withPrompts({
+          useRandomName: false,
+          appName: 'empathentric-mistery',
+          needsProxy: false
+        })
+        .on('ready', function(generator) {
+          // simulates heroku CLI available on system
+          generator._checkHeroku = function() {
+            return Promise.resolve();
+          };
+          // mocks spawnCommand, calls 'exit' event handler async
+          generator.spawnCommand = function(cmd, args) {
+            cmds.push({ cmd: cmd, args: args });
+            return {
+              on: function(evt, handler) {
+                if (evt === 'exit') {
+                  setTimeout(function() {
+                    handler(0);
+                  });
+                }
+              }
+            };
+          };
+        })
+        .on('end', done);
+    });
+
+    it('should save the app name', function() {
+      assert.fileContent('.yo-rc.json', /empathentric-mistery/);
+    });
+  });
 });
